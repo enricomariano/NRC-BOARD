@@ -83,10 +83,8 @@ app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
     res.status(500).json({ error: "Errore fetch streams", details: err.response?.data || err.message });
   }
 });
-// Tutte le attività
-app.get("/strava/activities", ensureToken, async (req, res) => { ... });
 
-// Singola attività
+// 📌 Endpoint: singola attività (versione /strava/activities/:id)
 app.get("/strava/activities/:id", ensureToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -100,15 +98,9 @@ app.get("/strava/activities/:id", ensureToken, async (req, res) => {
   }
 });
 
-// Avvio server
-app.listen(PORT, () => {
-  console.log(`✅ Backend Strava attivo su http://localhost:${PORT}`);
-  refreshAccessToken();
-});
-
+// 🚀 Avvio server
 app.listen(PORT, () => {
   console.log(`✅ Backend Strava attivo su http://localhost:${PORT}`);
   refreshAccessToken(); // Aggiorna subito al primo avvio
 });
-
 
