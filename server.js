@@ -83,9 +83,32 @@ app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
     res.status(500).json({ error: "Errore fetch streams", details: err.response?.data || err.message });
   }
 });
+// Tutte le attività
+app.get("/strava/activities", ensureToken, async (req, res) => { ... });
+
+// Singola attività
+app.get("/strava/activities/:id", ensureToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await axios.get(`https://www.strava.com/api/v3/activities/${id}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("❌ Errore dettaglio attività:", err.response?.data || err.message);
+    res.status(500).json({ error: "Errore fetch dettaglio", details: err.response?.data || err.message });
+  }
+});
+
+// Avvio server
+app.listen(PORT, () => {
+  console.log(`✅ Backend Strava attivo su http://localhost:${PORT}`);
+  refreshAccessToken();
+});
 
 app.listen(PORT, () => {
   console.log(`✅ Backend Strava attivo su http://localhost:${PORT}`);
   refreshAccessToken(); // Aggiorna subito al primo avvio
 });
+
 
