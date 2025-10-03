@@ -85,22 +85,50 @@ app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
 });
 
 // 📌 Endpoint: singola attività (versione /strava/activities/:id)
-app.get("/strava/activities/:id", ensureToken, async (req, res) => {
+app.get("/strava/activities", ensureToken, async (req, res) => {
   try {
-    const { id } = req.params;
-    const response = await axios.get(`https://www.strava.com/api/v3/activities/${id}`, {
+    const activitiesRes = await axios.get("https://www.strava.com/api/v3/athlete/activities", {
       headers: { Authorization: `Bearer ${accessToken}` },
+      params: { per_page: 10 },
     });
-    res.json(response.data);
+
+    const activities = activitiesRes.data;
+
+    // 🔁 Per ogni attività, recupera gli stream biomeccanici
+    const enrichedActivities = await Promise.all(
+      activities.map(async (activity) => {
+        try {
+          const streamRes = await axios.get(`https://www.strava.com/api/v3/activities/${activity.id}/streams`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            params: {
+              keys: "velocity_smooth,altitude,heartrate",
+              key_by_type: true,
+            },
+          });
+
+          const streams = streamRes.data;
+
+          // 🔧 Inserisci gli stream nell’attività
+          activity.velocity_stream = streams.velocity_smooth?.data || [];
+          activity.altitude_stream = streams.altitude?.data || [];
+          activity.heartrate_stream = streams.heartrate?.data || [];
+
+          return activity;
+        } catch (streamErr) {
+          console.warn(`⚠️ Stream non disponibili per attività ${activity.id}`);
+          activity.velocity_stream = [];
+          activity.altitude_stream = [];
+          activity.heartrate_stream = [];
+          return activity;
+        }
+      })
+    );
+
+    res.json(enrichedActivities);
   } catch (err) {
-    console.error("❌ Errore dettaglio attività:", err.response?.data || err.message);
-    res.status(500).json({ error: "Errore fetch dettaglio", details: err.response?.data || err.message });
+    console.error("❌ Errore fetch attività:", err.response?.data || err.message);
+    res.status(500).json({ error: "Errore fetch attività", details: err.response?.data || err.message });
   }
 });
 
-// 🚀 Avvio server
-app.listen(PORT, () => {
-  console.log(`✅ Backend Strava attivo su http://localhost:${PORT}`);
-  refreshAccessToken(); // Aggiorna subito al primo avvio
-});
 
