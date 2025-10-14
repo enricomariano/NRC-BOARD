@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5000;
 let accessToken = null;
 let tokenExpiresAt = 0;
 
-// 🔄 Aggiorna automaticamente il token
+// 🔄 Refresh automatico del token
 async function refreshAccessToken() {
   try {
     const response = await axios.post("https://www.strava.com/oauth/token", {
@@ -25,13 +25,13 @@ async function refreshAccessToken() {
     accessToken = response.data.access_token;
     tokenExpiresAt = response.data.expires_at;
 
-    console.log("✅ Nuovo token Strava ottenuto, valido fino a:", new Date(tokenExpiresAt * 1000));
+    console.log("✅ Token aggiornato, valido fino a:", new Date(tokenExpiresAt * 1000));
   } catch (err) {
-    console.error("❌ Errore refresh token:", err.response?.data || err.message);
+    console.error("❌ Errore nel refresh token:", err.response?.data || err.message);
   }
 }
 
-// 🔹 Middleware: controlla token valido
+// 🔐 Middleware: garantisce token valido
 async function ensureToken(req, res, next) {
   const now = Math.floor(Date.now() / 1000);
   if (!accessToken || now >= tokenExpiresAt) {
@@ -40,12 +40,12 @@ async function ensureToken(req, res, next) {
   next();
 }
 
-// 📌 Endpoint: ultime attività
+// 📌 Endpoint: ultime attività base
 app.get("/strava/activities", ensureToken, async (req, res) => {
   try {
     const response = await axios.get("https://www.strava.com/api/v3/athlete/activities", {
       headers: { Authorization: `Bearer ${accessToken}` },
-      params: { per_page: 10 }, // Ultime 10 attività
+      params: { per_page: 10 },
     });
     res.json(response.data);
   } catch (err) {
@@ -54,38 +54,8 @@ app.get("/strava/activities", ensureToken, async (req, res) => {
   }
 });
 
-// 📌 Endpoint: dettagli di una singola attività (incluse mappe e grafici)
-app.get("/strava/activity/:id", ensureToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const response = await axios.get(`https://www.strava.com/api/v3/activities/${id}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: { include_all_efforts: true }, // Più dettagli
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error("❌ Errore fetch dettagli attività:", err.response?.data || err.message);
-    res.status(500).json({ error: "Errore fetch dettagli attività", details: err.response?.data || err.message });
-  }
-});
-
-// 📌 Endpoint: stream per grafici (cadenza, velocità, altitudine, ecc.)
-app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const response = await axios.get(`https://www.strava.com/api/v3/activities/${id}/streams`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: { keys: "time,altitude,velocity_smooth,heartrate,cadence,watts", key_by_type: true },
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error("❌ Errore fetch streams:", err.response?.data || err.message);
-    res.status(500).json({ error: "Errore fetch streams", details: err.response?.data || err.message });
-  }
-});
-
-// 📌 Endpoint: singola attività (versione /strava/activities/:id)
-app.get("/strava/activities", ensureToken, async (req, res) => {
+// 📌 Endpoint: attività + stream biomeccanici
+app.get("/strava/activities/enriched", ensureToken, async (req, res) => {
   try {
     const activitiesRes = await axios.get("https://www.strava.com/api/v3/athlete/activities", {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -94,7 +64,6 @@ app.get("/strava/activities", ensureToken, async (req, res) => {
 
     const activities = activitiesRes.data;
 
-    // 🔁 Per ogni attività, recupera gli stream biomeccanici
     const enrichedActivities = await Promise.all(
       activities.map(async (activity) => {
         try {
@@ -108,7 +77,6 @@ app.get("/strava/activities", ensureToken, async (req, res) => {
 
           const streams = streamRes.data;
 
-          // 🔧 Inserisci gli stream nell’attività
           activity.velocity_stream = streams.velocity_smooth?.data || [];
           activity.altitude_stream = streams.altitude?.data || [];
           activity.heartrate_stream = streams.heartrate?.data || [];
@@ -131,4 +99,38 @@ app.get("/strava/activities", ensureToken, async (req, res) => {
   }
 });
 
+// 📌 Endpoint: dettagli singola attività
+app.get("/strava/activity/:id", ensureToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await axios.get(`https://www.strava.com/api/v3/activities/${id}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: { include_all_efforts: true },
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("❌ Errore fetch dettagli attività:", err.response?.data || err.message);
+    res.status(500).json({ error: "Errore fetch dettagli attività", details: err.response?.data || err.message });
+  }
+});
 
+// 📌 Endpoint: stream per grafici
+app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await axios.get(`https://www.strava.com/api/v3/activities/${id}/streams`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: {
+        keys: "time,altitude,velocity_smooth,heartrate,cadence,watts",
+        key_by_type: true,
+      },
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("❌ Errore fetch streams:", err.response?.data || err.message);
+    res.status(500).json({ error: "Errore fetch streams", details: err.response?.data || err.message });
+  }
+});
+
+// ▶️ Avvio server
+app.listen(PORT, () => console.log(`🚀 Server Strava attivo su http://localhost:${PORT}`));
