@@ -1,8 +1,8 @@
-import express from "express";
-import axios from "axios";
-import dotenv from "dotenv";
-import cors from "cors";
-import fs from "fs";
+const express = require("express");
+const axios = require("axios");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const fs = require("fs");
 
 dotenv.config();
 
@@ -214,3 +214,4 @@ app.get("/strava/activity/:id", ensureToken, async (req, res) => {
     res.status(500).json({ error: "Errore fetch dettagli attività", details: err.message });
   }
 });
+
