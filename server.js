@@ -245,6 +245,8 @@ res.json({
       { label: "Dislivello (m)", data: dislivello, borderColor: "orange" }
     ]
   }
-});
+  app.listen(PORT, () => { console.log(`🚀 Server attivo su http://localhost:${PORT}`); });
+
 
   
+
