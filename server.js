@@ -300,8 +300,113 @@ app.get("/analyze/biometrics", (req, res) => {
   }
 });
 
+app.get("/compare/activities/:metric", (req, res) => {
+  try {
+    const metric = req.params.metric;
+    if (!fs.existsSync("attivita.json")) {
+      return res.status(404).json({ error: "⚠️ attivita.json non trovato" });
+    }
+
+    const raw = fs.readFileSync("attivita.json");
+    const activities = JSON.parse(raw);
+
+    const result = activities.map((a) => {
+      const stream = a[`${metric}_stream`] || a.streams?.[metric]?.data || [];
+      const avg = stream.length ? (stream.reduce((s, v) => s + v, 0) / stream.length).toFixed(1) : null;
+      return {
+        id: a.id,
+        name: a.name,
+        date: a.start_date_local,
+        average: avg
+      };
+    }).filter((r) => r.average !== null);
+
+    res.json({ metric, count: result.length, comparison: result });
+  } catch (err) {
+    console.error("❌ Errore confronto attività:", err.message);
+    res.status(500).json({ error: "Errore confronto attività", details: err.message });
+  }
+});
+
+app.get("/export/csv", (req, res) => {
+  try {
+    if (!fs.existsSync("attivita.json")) {
+      return res.status(404).json({ error: "⚠️ attivita.json non trovato" });
+    }
+
+    const raw = fs.readFileSync("attivita.json");
+    const activities = JSON.parse(raw);
+
+    const rows = [["id", "name", "date", "avg_heartRate", "avg_velocity", "avg_altitude"]];
+    for (const a of activities) {
+      const hr = a.heartrate_stream || a.streams?.heartrate?.data || [];
+      const velocity = a.velocity_stream || a.streams?.velocity_smooth?.data || [];
+      const altitude = a.altitude_stream || a.streams?.altitude?.data || [];
+
+      const avgHR = hr.length ? (hr.reduce((s, v) => s + v, 0) / hr.length).toFixed(1) : "";
+      const avgVel = velocity.length ? (velocity.reduce((s, v) => s + v, 0) / velocity.length).toFixed(2) : "";
+      const avgAlt = altitude.length ? (altitude.reduce((s, v) => s + v, 0) / altitude.length).toFixed(1) : "";
+
+      rows.push([a.id, a.name, a.start_date_local, avgHR, avgVel, avgAlt]);
+    }
+
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    fs.writeFileSync("biometric_export.csv", csv);
+    res.json({ status: "✅ CSV esportato", rows: rows.length });
+  } catch (err) {
+    console.error("❌ Errore esportazione CSV:", err.message);
+    res.status(500).json({ error: "Errore esportazione CSV", details: err.message });
+  }
+});
+
+app.get("/analyze/intensity", (req, res) => {
+  try {
+    if (!fs.existsSync("attivita.json")) {
+      return res.status(404).json({ error: "⚠️ attivita.json non trovato" });
+    }
+
+    const raw = fs.readFileSync("attivita.json");
+    const activities = JSON.parse(raw);
+
+    const result = activities.map((a) => {
+      const hr = a.heartrate_stream || a.streams?.heartrate?.data || [];
+      const watts = a.watts_stream || a.streams?.watts?.data || [];
+      const duration = hr.length;
+
+      const avgHR = hr.length ? (hr.reduce((s, v) => s + v, 0) / hr.length).toFixed(1) : null;
+      const maxHR = hr.length ? Math.max(...hr) : null;
+      const avgWatts = watts.length ? (watts.reduce((s, v) => s + v, 0) / watts.length).toFixed(1) : null;
+
+      const zones = {
+        zone1: hr.filter((v) => v < 120).length,
+        zone2: hr.filter((v) => v >= 120 && v < 140).length,
+        zone3: hr.filter((v) => v >= 140 && v < 160).length,
+        zone4: hr.filter((v) => v >= 160 && v < 180).length,
+        zone5: hr.filter((v) => v >= 180).length
+      };
+
+      return {
+        id: a.id,
+        name: a.name,
+        date: a.start_date_local,
+        avgHR,
+        maxHR,
+        avgWatts,
+        duration,
+        zones
+      };
+    });
+
+    res.json({ count: result.length, intensity: result });
+  } catch (err) {
+    console.error("❌ Errore analisi intensità:", err.message);
+    res.status(500).json({ error: "Errore analisi intensità", details: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
