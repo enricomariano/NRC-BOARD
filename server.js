@@ -2,6 +2,7 @@ import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
 import cors from "cors";
+import fs from "fs";
 
 dotenv.config();
 
@@ -129,6 +130,87 @@ app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
   } catch (err) {
     console.error("❌ Errore fetch streams:", err.response?.data || err.message);
     res.status(500).json({ error: "Errore fetch streams", details: err.response?.data || err.message });
+  }
+});
+
+// 📦 Salva tutte le attività in attivita.json
+app.get("/strava/save-activities", ensureToken, async (req, res) => {
+  try {
+    let allActivities = [];
+    let page = 1;
+
+    while (true) {
+      const response = await axios.get("https://www.strava.com/api/v3/athlete/activities", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { per_page: 200, page },
+      });
+
+      const data = response.data;
+      if (data.length === 0) break;
+
+      allActivities.push(...data);
+      page++;
+    }
+
+    fs.writeFileSync("attivita.json", JSON.stringify(allActivities, null, 2));
+    res.json({ status: "✅ Attività salvate", count: allActivities.length });
+  } catch (err) {
+    console.error("❌ Errore salvataggio attività:", err.response?.data || err.message);
+    res.status(500).json({ error: "Errore salvataggio attività", details: err.response?.data || err.message });
+  }
+});
+
+// 🧠 Analisi settimanale da attivita.json
+app.get("/analyze/week", (req, res) => {
+  try {
+    if (!fs.existsSync("attivita.json")) {
+      return res.status(404).json({ error: "⚠️ attivita.json non trovato" });
+    }
+
+    const raw = fs.readFileSync("attivita.json");
+    const activities = JSON.parse(raw);
+
+    const weeks = {};
+
+    for (const a of activities) {
+      const start = new Date(a.start_date);
+      const year = start.getFullYear();
+      const week = Math.ceil((((start - new Date(year, 0, 1)) / 86400000) + new Date(year, 0, 1).getDay() + 1) / 7);
+      const key = `${year}-W${week}`;
+
+      if (!weeks[key]) {
+        weeks[key] = { distance: 0, time: 0, elevation: 0, count: 0 };
+      }
+
+      weeks[key].distance += a.distance || 0;
+      weeks[key].time += a.moving_time || 0;
+      weeks[key].elevation += a.total_elevation_gain || 0;
+      weeks[key].count++;
+    }
+
+    const sorted = Object.entries(weeks).sort(([a], [b]) => a.localeCompare(b));
+    const labels = sorted.map(([k]) => k);
+    const km = sorted.map(([, v]) => (v.distance / 1000).toFixed(1));
+    const ore = sorted.map(([, v]) => (v.time / 3600).toFixed(1));
+    const dislivello = sorted.map(([, v]) => v.elevation.toFixed(0));
+
+    const last = sorted.at(-1)?.[1] || {};
+    const text = `Ultima settimana: ${((last.distance || 0) / 1000).toFixed(1)} km, ${(last.time / 3600).toFixed(1)} ore, ${last.elevation?.toFixed(0)} m di dislivello su ${last.count} attività.`;
+
+    res.json({
+      text,
+      chart: {
+        labels,
+        datasets: [
+          { label: "Distanza (km)", data: km, borderColor: "blue" },
+          { label: "Tempo (h)", data: ore, borderColor: "green" },
+          { label: "Dislivello (m)", data: dislivello, borderColor: "orange" }
+        ]
+      }
+    });
+  } catch (err) {
+    console.error("❌ Errore analisi:", err.message);
+    res.status(500).json({ error: "Errore analisi settimanale", details: err.message });
   }
 });
 
