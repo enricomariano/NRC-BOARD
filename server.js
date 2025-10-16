@@ -228,7 +228,7 @@ app.get("/analyze/week", (req, res) => {
       weeks[key].count++;
     }
 
-  const km = sorted.map(([, v]) => (v.distance / 1000).toFixed(1));
+const km = sorted.map(([, v]) => (v.distance / 1000).toFixed(1));
 const ore = sorted.map(([, v]) => (v.time / 3600).toFixed(1));
 const dislivello = sorted.map(([, v]) => v.elevation.toFixed(0));
 
@@ -245,8 +245,16 @@ res.json({
       { label: "Dislivello (m)", data: dislivello, borderColor: "orange" }
     ]
   }
-  app.listen(PORT, () => { console.log(`🚀 Server attivo su http://localhost:${PORT}`); });
-
+});
+} catch (err) {
+  console.error("❌ Errore analisi:", err.message);
+  res.status(500).json({ error: "Errore analisi settimanale", details: err.message });
+}
+});
+app.listen(PORT, () => {
+  console.log(`🚀 Server attivo su http://localhost:${PORT}`);
+});
 
   
+
 
