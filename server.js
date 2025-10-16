@@ -259,7 +259,49 @@ app.get("/recognize/routes", (req, res) => {
     res.status(500).json({ error: "Errore riconoscimento percorsi", details: err.message });
   }
 });
+
+app.get("/analyze/biometrics", (req, res) => {
+  try {
+    if (!fs.existsSync("attivita.json")) {
+      return res.status(404).json({ error: "⚠️ attivita.json non trovato" });
+    }
+
+    const raw = fs.readFileSync("attivita.json");
+    const activities = JSON.parse(raw);
+
+    const result = [];
+
+    for (const a of activities) {
+      const id = a.id;
+      const name = a.name;
+      const date = a.start_date_local;
+      const hr = a.heartrate_stream || a.streams?.heartrate?.data || [];
+      const cadence = a.cadence_stream || a.streams?.cadence?.data || [];
+      const watts = a.watts_stream || a.streams?.watts?.data || [];
+      const velocity = a.velocity_stream || a.streams?.velocity_smooth?.data || [];
+      const altitude = a.altitude_stream || a.streams?.altitude?.data || [];
+
+      result.push({
+        id,
+        name,
+        date,
+        heartRate: hr,
+        cadence,
+        watts,
+        velocity,
+        altitude
+      });
+    }
+
+    res.json({ count: result.length, activities: result });
+  } catch (err) {
+    console.error("❌ Errore analisi biometrica:", err.message);
+    res.status(500).json({ error: "Errore analisi biometrica", details: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
