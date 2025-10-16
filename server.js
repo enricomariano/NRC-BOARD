@@ -214,4 +214,8 @@ app.get("/strava/activity/:id", ensureToken, async (req, res) => {
     res.status(500).json({ error: "Errore fetch dettagli attività", details: err.message });
   }
 });
+app.listen(PORT, () => {
+  console.log(`🚀 Server attivo su http://localhost:${PORT}`);
+});
+
 
