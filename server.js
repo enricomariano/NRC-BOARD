@@ -404,6 +404,47 @@ app.get("/analyze/intensity", (req, res) => {
   }
 });
 
+let tokenData = null;
+const TOKEN_FILE = "token.json";
+
+// 🔁 Carica token da file all'avvio
+if (fs.existsSync(TOKEN_FILE)) {
+  try {
+    tokenData = JSON.parse(fs.readFileSync(TOKEN_FILE));
+    accessToken = tokenData.access_token;
+    tokenExpiresAt = tokenData.expires_at;
+    console.log("✅ Token caricato da file");
+  } catch (err) {
+    console.error("❌ Errore lettura token.json:", err.message);
+  }
+}
+
+// 🔑 Callback OAuth2
+app.get("/strava/callback", async (req, res) => {
+  const code = req.query.code;
+  try {
+    const response = await axios.post("https://www.strava.com/oauth/token", {
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET,
+      code,
+      grant_type: "authorization_code"
+    });
+
+    tokenData = response.data;
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2));
+
+    accessToken = tokenData.access_token;
+    tokenExpiresAt = tokenData.expires_at;
+
+    console.log("✅ Token salvato e attivo fino a:", new Date(tokenExpiresAt * 1000));
+    res.redirect("https://nrc-board.onrender.com"); // torna alla tua app
+  } catch (err) {
+    console.error("❌ Errore nel callback:", err.message);
+    res.status(500).send("❌ Errore nel callback");
+  }
+});
+
+// 🔍 Info token
 app.get("/strava/token-info", (req, res) => {
   try {
     if (!tokenData) {
@@ -419,30 +460,8 @@ app.get("/strava/token-info", (req, res) => {
     res.status(500).json({ error: "Errore nel recupero token" });
   }
 });
-app.get("/strava/callback", async (req, res) => {
-  const code = req.query.code;
-  try {
-    const response = await axios.post("https://www.strava.com/oauth/token", {
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      code,
-      grant_type: "authorization_code"
-    });
 
-    tokenData = response.data;
-    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2));
-    res.redirect("https://nrc-board.onrender.com"); // ← torna alla tua app
-  } catch (err) {
-    res.status(500).send("❌ Errore nel callback");
-  }
-});
-
-
+// 🚀 Avvio server
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
-
-
-
-
-
