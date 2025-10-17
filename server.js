@@ -461,7 +461,31 @@ app.get("/strava/token-info", (req, res) => {
   }
 });
 
+app.get("/strava/refresh-now", async (req, res) => {
+  try {
+    const response = await axios.post("https://www.strava.com/oauth/token", {
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET,
+      refresh_token: tokenData.refresh_token,
+      grant_type: "refresh_token"
+    });
+
+    tokenData = response.data;
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2));
+
+    accessToken = tokenData.access_token;
+    tokenExpiresAt = tokenData.expires_at;
+
+    console.log("✅ Token aggiornato manualmente");
+    res.json({ status: "✅ Token aggiornato", expires_at: tokenExpiresAt });
+  } catch (err) {
+    console.error("❌ Errore nel refresh manuale:", err.message);
+    res.status(500).json({ error: "Errore nel refresh manuale" });
+  }
+});
+
 // 🚀 Avvio server
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
