@@ -463,6 +463,10 @@ app.get("/strava/token-info", (req, res) => {
 
 app.get("/strava/refresh-now", async (req, res) => {
   try {
+    if (!tokenData || !tokenData.refresh_token) {
+      return res.status(400).json({ error: "⚠️ refresh_token mancante o token non inizializzato" });
+    }
+
     const response = await axios.post("https://www.strava.com/oauth/token", {
       client_id: process.env.CLIENT_ID,
       client_secret: process.env.CLIENT_SECRET,
@@ -477,15 +481,22 @@ app.get("/strava/refresh-now", async (req, res) => {
     tokenExpiresAt = tokenData.expires_at;
 
     console.log("✅ Token aggiornato manualmente");
-    res.json({ status: "✅ Token aggiornato", expires_at: tokenExpiresAt });
+    res.json({
+      status: "✅ Token aggiornato",
+      expires_at: tokenExpiresAt,
+      valid: true,
+      athlete: tokenData.athlete || "N/D"
+    });
   } catch (err) {
     console.error("❌ Errore nel refresh manuale:", err.message);
-    res.status(500).json({ error: "Errore nel refresh manuale" });
+    res.status(500).json({ error: "Errore nel refresh manuale", details: err.message });
   }
 });
+
 
 // 🚀 Avvio server
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
