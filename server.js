@@ -419,10 +419,29 @@ app.get("/strava/token-info", (req, res) => {
     res.status(500).json({ error: "Errore nel recupero token" });
   }
 });
+app.get("/strava/callback", async (req, res) => {
+  const code = req.query.code;
+  try {
+    const response = await axios.post("https://www.strava.com/oauth/token", {
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      code,
+      grant_type: "authorization_code"
+    });
+
+    tokenData = response.data;
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2));
+    res.redirect("https://nrc-board.onrender.com"); // ← torna alla tua app
+  } catch (err) {
+    res.status(500).send("❌ Errore nel callback");
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
