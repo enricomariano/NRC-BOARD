@@ -404,9 +404,26 @@ app.get("/analyze/intensity", (req, res) => {
   }
 });
 
+app.get("/strava/token-info", (req, res) => {
+  try {
+    if (!tokenData) {
+      return res.status(404).json({ error: "Token non disponibile" });
+    }
+    res.json({
+      valid: Date.now() < tokenData.expires_at * 1000,
+      expires_at: tokenData.expires_at,
+      access_token: tokenData.access_token?.slice(0, 10) + "...",
+      athlete: tokenData.athlete || "N/D"
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Errore nel recupero token" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
