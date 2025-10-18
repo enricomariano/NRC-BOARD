@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 let accessToken = null;
 let tokenExpiresAt = 0;
 
-app.use(express.static(path.join(__dirname, "app/src/main/resources/sito")));
+app.use(express.static(__dirname));
 
 // 🔄 Refresh automatico del token
 async function refreshAccessToken() {
@@ -537,6 +537,7 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
