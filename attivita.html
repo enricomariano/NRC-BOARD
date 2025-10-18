@@ -105,7 +105,8 @@ async function loadAllActivities(){
       const div = document.createElement("div");
       div.className = "activity-card";
       div.innerHTML = `<h3>${a.name}</h3><p>${(a.distance/1000).toFixed(1)} km</p>
-                      <button onclick="showDetails(${Number(a.id)})">➔</button>;
+                    <button onclick="showDetails(${Number(a.id)})">➔</button>
+
       list.appendChild(div);
     });
   } catch (err) {
@@ -199,8 +200,6 @@ if (act.map?.summary_polyline) {
   console.error("Errore dettagli attività:", err);
   details.innerHTML = "<p>❌ Impossibile caricare dettagli o stream</p>";
 }
-
 </script>
 </body>
 </html>
-
