@@ -101,14 +101,18 @@ async function loadAllActivities(){
 
     const list = document.getElementById("activityList");
     list.innerHTML = "";
-    acts.forEach(a => {
-      const div = document.createElement("div");
-      div.className = "activity-card";
-      div.innerHTML = `<h3>${a.name}</h3><p>${(a.distance/1000).toFixed(1)} km</p>
-                    <button onclick="showDetails(${Number(a.id)})">➔</button>
+   acts.forEach(a => {
+  
+     const div = document.createElement("div");
+  div.className = "activity-card";
+  div.innerHTML = `
+    <h3>${a.name}</h3>
+    <p>${(a.distance / 1000).toFixed(1)} km</p>
+    <button onclick="showDetails(${Number(a.id)})">➔</button>
+  `;
+  list.appendChild(div);
+});
 
-      list.appendChild(div);
-    });
   } catch (err) {
     console.error("Errore fetch attività:", err);
     document.getElementById("activityList").innerHTML = "<p>Errore nel caricamento attività</p>";
@@ -203,3 +207,4 @@ if (act.map?.summary_polyline) {
 </script>
 </body>
 </html>
+
