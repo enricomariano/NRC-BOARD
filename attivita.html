@@ -105,7 +105,7 @@ async function loadAllActivities(){
       const div = document.createElement("div");
       div.className = "activity-card";
       div.innerHTML = `<h3>${a.name}</h3><p>${(a.distance/1000).toFixed(1)} km</p>
-                       <button onclick="showDetails(${a.id})">➔</button>`;
+                      <button onclick="showDetails(${Number(a.id)})">➔</button>;
       list.appendChild(div);
     });
   } catch (err) {
@@ -165,35 +165,39 @@ async function showDetails(id) {
         }
       }
     });
+if (act.map?.summary_polyline) {
+  const coords = polyline.decode(act.map.summary_polyline).map(([lat, lon]) => [lon, lat]);
 
-    if (act.map?.summary_polyline) {
-      const coords = polyline.decode(act.map.summary_polyline).map(([lat, lon]) => [lon, lat]);
-      const route = new ol.geom.LineString(coords).transform('EPSG:4326', 'EPSG:3857');
-      const routeFeature = new ol.Feature({ geometry: route });
+  setTimeout(() => {
+    const route = new ol.geom.LineString(coords).transform('EPSG:4326', 'EPSG:3857');
+    const routeFeature = new ol.Feature({ geometry: route });
 
-      const vectorLayer = new ol.layer.Vector({
-        source: new ol.source.Vector({ features: [routeFeature] }),
-              style: new ol.style.Style({
-          stroke: new ol.style.Stroke({ color: '#0078d7', width: 3 })
-        })
-      });
+    const vectorLayer = new ol.layer.Vector({
+      source: new ol.source.Vector({ features: [routeFeature] }),
+      style: new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: '#0078d7', width: 3 })
+      })
+    });
 
-      new ol.Map({
-        target: `map-${id}`,
-        layers: [
-          new ol.layer.Tile({ source: new ol.source.OSM() }),
-          vectorLayer
-        ],
-        view: new ol.View({
-          center: ol.proj.fromLonLat(coords[0]),
-          zoom: 13
-        })
-      });
-    }
-  } catch (err) {
-    console.error("Errore dettagli attività:", err);
-    details.innerHTML = "<p>❌ Impossibile caricare dettagli o stream</p>";
-  }
+    new ol.Map({
+      target: `map-${id}`,
+      layers: [
+        new ol.layer.Tile({ source: new ol.source.OSM() }),
+        vectorLayer
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat(coords[0]),
+        zoom: 13
+      })
+    });
+  }, 100);
+} else {
+  console.warn("⚠️ Nessuna polyline disponibile per questa attività");
+}
+
+} catch (err) {
+  console.error("Errore dettagli attività:", err);
+  details.innerHTML = "<p>❌ Impossibile caricare dettagli o stream</p>";
 }
 </script>
 </body>
