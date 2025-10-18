@@ -158,7 +158,8 @@ app.get("/strava/activity/:id", ensureToken, async (req, res) => {
       elev_low: activity.elev_low,
       map: { summary_polyline: polyline }
     });
-  } catch (err) {
+    
+    catch (err) {
     console.error("❌ Errore fetch dettagli attività:", err.message);
     res.status(500).json({ error: "Errore fetch dettagli attività", details: err.message });
   }
@@ -584,6 +585,7 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
