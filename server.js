@@ -468,10 +468,10 @@ app.get("/strava/refresh-now", async (req, res) => {
     }
 
     const response = await axios.post("https://www.strava.com/oauth/token", {
-      client_id: process.env.CLIENT_ID,
-      client_secret: process.env.CLIENT_SECRET,
-      refresh_token: tokenData.refresh_token,
-      grant_type: "refresh_token"
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: tokenData.refresh_token
     });
 
     tokenData = response.data;
@@ -488,10 +488,11 @@ app.get("/strava/refresh-now", async (req, res) => {
       athlete: tokenData.athlete || "N/D"
     });
   } catch (err) {
-    console.error("❌ Errore nel refresh manuale:", err.message);
+    console.error("❌ Errore nel refresh manuale:", err.response?.data || err.message);
     res.status(500).json({ error: "Errore nel refresh manuale", details: err.message });
   }
 });
+
 
 // 🛠️ Diagnostica token.json
 app.get("/debug/token", (req, res) => {
@@ -529,6 +530,7 @@ app.get("/debug/token", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
