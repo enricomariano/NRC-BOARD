@@ -77,6 +77,7 @@ async function loadWeeklyAnalysis() {
   }
 }
 
+<script>
 window.onload = () => {
   fetch("/strava/token-info")
     .then(res => res.json())
@@ -92,9 +93,13 @@ window.onload = () => {
       console.error("Errore controllo token:", err);
       document.getElementById("activityList").innerHTML = "<p>Errore nel controllo token</p>";
     });
+
+  document.getElementById("toggleAnalysis").addEventListener("click", () => {
+    const box = document.getElementById("aiSummary");
+    if (box) box.style.display = box.style.display === "none" ? "block" : "none";
+  });
 };
 
-<script>
 async function loadAllActivities() {
   try {
     const res = await fetch("/strava/activities");
