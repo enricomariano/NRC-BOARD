@@ -93,15 +93,27 @@ app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: {
         keys: "time,altitude,velocity_smooth,heartrate,cadence,watts",
-        key_by_type: true,
-      },
+        key_by_type: true
+      }
     });
-    res.json(response.data);
+
+    const data = response.data;
+    const fallback = (key) => Array.isArray(data[key]) ? data[key] : [];
+
+    res.json({
+      time: fallback("time"),
+      altitude: fallback("altitude"),
+      velocity_smooth: fallback("velocity_smooth"),
+      heartrate: fallback("heartrate"),
+      cadence: fallback("cadence"),
+      watts: fallback("watts")
+    });
   } catch (err) {
     console.error("❌ Errore fetch streams:", err.message);
     res.status(500).json({ error: "Errore fetch streams", details: err.message });
   }
 });
+
 
 // 📌 Dettagli attività con segmenti e zone
 app.get("/strava/activity/:id", ensureToken, async (req, res) => {
@@ -109,14 +121,20 @@ app.get("/strava/activity/:id", ensureToken, async (req, res) => {
     const { id } = req.params;
     const response = await axios.get(`https://www.strava.com/api/v3/activities/${id}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-      params: { include_all_efforts: true },
+      params: { include_all_efforts: true }
     });
-    res.json(response.data);
+
+    const activity = response.data;
+    const map = activity.map || {};
+    const polyline = map.summary_polyline || null;
+
+    res.json({ ...activity, map: { summary_polyline: polyline } });
   } catch (err) {
     console.error("❌ Errore fetch dettagli attività:", err.message);
     res.status(500).json({ error: "Errore fetch dettagli attività", details: err.message });
   }
 });
+
 
 // 📦 Salva attività arricchite
 app.get("/strava/save-enriched", ensureToken, async (req, res) => {
@@ -537,6 +555,7 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
