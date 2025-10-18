@@ -493,10 +493,42 @@ app.get("/strava/refresh-now", async (req, res) => {
   }
 });
 
+// 🛠️ Diagnostica token.json
+app.get("/debug/token", (req, res) => {
+  const result = {
+    exists: false,
+    readable: false,
+    access_token: null,
+    refresh_token: null,
+    expires_at: null,
+    valid: false,
+    error: null
+  };
+
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      result.exists = true;
+      const raw = fs.readFileSync(TOKEN_FILE);
+      const data = JSON.parse(raw);
+      result.readable = true;
+      result.access_token = data.access_token?.slice(0, 10) + "...";
+      result.refresh_token = !!data.refresh_token;
+      result.expires_at = data.expires_at;
+      result.valid = Date.now() < data.expires_at * 1000;
+    } else {
+      result.error = "❌ Il file token.json non esiste";
+    }
+  } catch (err) {
+    result.error = "❌ Errore lettura/parsing: " + err.message;
+  }
+
+  res.json(result);
+});
 
 // 🚀 Avvio server
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
