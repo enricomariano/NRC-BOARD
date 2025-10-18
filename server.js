@@ -3,6 +3,9 @@ const axios = require("axios");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const fs = require("fs");
+const path = require("path");
+
+app.use(express.static(path.join(__dirname, "app/src/main/resources/sito")));
 
 dotenv.config();
 
@@ -437,7 +440,7 @@ app.get("/strava/callback", async (req, res) => {
     tokenExpiresAt = tokenData.expires_at;
 
     console.log("✅ Token salvato e attivo fino a:", new Date(tokenExpiresAt * 1000));
-    res.redirect("https://nrc-board.onrender.com"); // torna alla tua app
+    res.redirect("/attivita.html"); // torna alla tua app
   } catch (err) {
     console.error("❌ Errore nel callback:", err.message);
     res.status(500).send("❌ Errore nel callback");
@@ -534,6 +537,7 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
