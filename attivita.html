@@ -1,0 +1,189 @@
+<<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Attività Strava</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: sans-serif; overflow: hidden; }
+    .layout { display: flex; height: 100%; }
+    .left { width: 30%; overflow-y: auto; border-right: 1px solid #ccc; padding: 10px; background: #f0f4f8; }
+    .right { width: 70%; padding: 10px; overflow-y: auto; }
+    .activity-card { background: #fff; border: 1px solid #ddd; margin-bottom: 10px; padding: 10px; border-radius: 8px; transition: 0.2s ease; }
+    .activity-card:hover { transform: scale(1.02); background: #e6f0ff; }
+    .activity-card h3, .activity-card p { margin: 5px 0; font-size: 14px; }
+    .activity-card button { float: right; padding: 5px 10px; font-size: 14px; }
+    .widget { background: #fff; border: 1px solid #ccc; padding: 10px; border-radius: 10px; margin-top: 10px; }
+    #toggleAnalysis { position: fixed; bottom: 20px; right: 20px; padding: 10px 16px; font-size: 14px; background: #0078d7; color: white; border: none; border-radius: 6px; cursor: pointer; z-index: 1000; }
+    #aiSummary { display: none; margin-top: 10px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <div class="left" id="activityList"><p>Caricamento attività...</p></div>
+  <div class="right" id="activityDetails">
+    <p>Seleziona un’attività →</p>
+    <div class="widget" id="aiSummary">
+      <h3>🧠 Analisi settimanale</h3>
+      <p id="summaryText">Caricamento...</p>
+      <canvas id="weeklyChart" style="max-height:300px;"></canvas>
+    </div>
+  </div>
+</div>
+
+<button id="toggleAnalysis" onclick="toggleAnalysis()">Analisi settimanale</button>
+
+<script>
+function toggleAnalysis() {
+  const box = document.getElementById("aiSummary");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+async function loadWeeklyAnalysis() {
+  try {
+    const res = await fetch("https://nrc-board.onrender.com/analyze/week");
+    const data = await res.json();
+
+    document.getElementById("summaryText").innerText = data.text;
+
+    const ctx = document.getElementById("weeklyChart").getContext("2d");
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data.chart.labels,
+        datasets: data.chart.datasets.map(ds => ({
+          ...ds,
+          fill: false,
+          tension: 0.2
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { font: { size: 12 } } }
+        },
+        scales: {
+          x: { ticks: { maxTicksLimit: 10 } }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Errore analisi settimanale:", err);
+    document.getElementById("summaryText").innerText = "⚠️ Nessuna analisi disponibile";
+  }
+}
+
+window.onload = () => {
+  fetch("https://nrc-board.onrender.com/strava/token-info")
+    .then(res => res.json())
+    .then(data => {
+      if (!data.valid) {
+        window.location.href = `https://www.strava.com/oauth/authorize?client_id=134273&response_type=code&redirect_uri=https://nrc-board.onrender.com/strava/callback&approval_prompt=force&scope=activity:read_all`;
+      } else {
+        loadAllActivities();
+        loadWeeklyAnalysis();
+      }
+    })
+    .catch(err => {
+      console.error("Errore controllo token:", err);
+      document.getElementById("activityList").innerHTML = "<p>Errore nel controllo token</p>";
+    });
+};
+
+async function loadAllActivities(){
+  try {
+    const res = await fetch("https://nrc-board.onrender.com/strava/activities");
+    const acts = await res.json();
+
+    const list = document.getElementById("activityList");
+    list.innerHTML = "";
+    acts.forEach(a => {
+      const div = document.createElement("div");
+      div.className = "activity-card";
+      div.innerHTML = `<h3>${a.name}</h3><p>${(a.distance/1000).toFixed(1)} km</p>
+                       <button onclick="showDetails(${a.id})">➔</button>`;
+      list.appendChild(div);
+    });
+  } catch (err) {
+    console.error("Errore fetch attività:", err);
+    document.getElementById("activityList").innerHTML = "<p>Errore nel caricamento attività</p>";
+  }
+}
+
+async function showDetails(id) {
+  const details = document.getElementById("activityDetails");
+  details.innerHTML = "<p>Caricamento dettagli...</p>";
+
+  try {
+    const res = await fetch(`https://nrc-board.onrender.com/strava/activity/${id}`);
+    const act = await res.json();
+
+    const streamRes = await fetch(`https://nrc-board.onrender.com/strava/activity/${id}/streams`);
+    const streams = await streamRes.json();
+
+    details.innerHTML = `
+      <div class="widget">
+        <h2>${act.name}</h2>
+        <p>Distanza: ${(act.distance / 1000).toFixed(1)} km</p>
+        <p>Dislivello: ${act.total_elevation_gain} m</p>
+        <p>Tempo: ${(act.moving_time / 60).toFixed(0)} min</p>
+        <p>Potenza media: ${act.average_watts || '–'} W</p>
+        <p>Energia: ${act.kilojoules?.toFixed(1) || '–'} kJ</p>
+        <p>Altitudine max: ${act.elev_high || '–'} m – min: ${act.elev_low || '–'} m</p>
+        <canvas id="chart-${id}" style="max-height:300px;"></canvas>
+      </div>
+    `;
+
+    const ctx = document.getElementById(`chart-${id}`).getContext("2d");
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: Array.from({ length: streams.velocity_smooth.length }, (_, i) => i),
+        datasets: [
+          {
+            label: "Velocità (km/h)",
+            data: streams.velocity_smooth,
+            borderColor: "green",
+            fill: false
+          },
+          {
+            label: "Altitudine (m)",
+            data: streams.altitude,
+            borderColor: "blue",
+            fill: false
+          },
+          {
+            label: "HR (bpm)",
+            data: streams.heartrate,
+            borderColor: "red",
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: "top" },
+          title: { display: true, text: "Riepilogo attività" }
+        },
+        interaction: {
+          mode: "index",
+          intersect: false
+        },
+        scales: {
+          x: { title: { display: true, text: "Tempo (s)" } },
+          y: { title: { display: true, text: "Valore" } }
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error("Errore dettagli attività:", err);
+    details.innerHTML = "<p>❌ Impossibile caricare dettagli o stream</p>";
+  }
+}
+</script>
+</body>
+</html>
