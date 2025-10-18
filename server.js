@@ -526,10 +526,15 @@ app.get("/debug/token", (req, res) => {
   res.json(result);
 });
 
+app.get("/", (req, res) => {
+  res.send("✅ Server Strava attivo. Callback ricevuto correttamente.");
+});
+
 // 🚀 Avvio server
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
