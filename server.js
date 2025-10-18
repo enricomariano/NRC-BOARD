@@ -468,8 +468,8 @@ app.get("/strava/refresh-now", async (req, res) => {
     }
 
     const response = await axios.post("https://www.strava.com/oauth/token", {
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET,
       grant_type: "refresh_token",
       refresh_token: tokenData.refresh_token
     });
@@ -530,6 +530,7 @@ app.get("/debug/token", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
