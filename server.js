@@ -115,6 +115,24 @@ app.get("/strava/activity/:id/streams", ensureToken, async (req, res) => {
 });
 
 
+    const data = response.data;
+    const fallback = (key) => Array.isArray(data[key]) ? data[key] : [];
+
+    res.json({
+      time: fallback("time"),
+      altitude: fallback("altitude"),
+      velocity_smooth: fallback("velocity_smooth"),
+      heartrate: fallback("heartrate"),
+      cadence: fallback("cadence"),
+      watts: fallback("watts")
+    });
+  } catch (err) {
+    console.error("❌ Errore fetch streams:", err.message);
+    res.status(500).json({ error: "Errore fetch streams", details: err.message });
+  }
+});
+
+
 // 📌 Dettagli attività con segmenti e zone
 app.get("/strava/activity/:id", ensureToken, async (req, res) => {
   try {
@@ -128,7 +146,18 @@ app.get("/strava/activity/:id", ensureToken, async (req, res) => {
     const map = activity.map || {};
     const polyline = map.summary_polyline || null;
 
-    res.json({ ...activity, map: { summary_polyline: polyline } });
+    res.json({
+      id: activity.id,
+      name: activity.name,
+      distance: activity.distance,
+      moving_time: activity.moving_time,
+      total_elevation_gain: activity.total_elevation_gain,
+      average_watts: activity.average_watts,
+      kilojoules: activity.kilojoules,
+      elev_high: activity.elev_high,
+      elev_low: activity.elev_low,
+      map: { summary_polyline: polyline }
+    });
   } catch (err) {
     console.error("❌ Errore fetch dettagli attività:", err.message);
     res.status(500).json({ error: "Errore fetch dettagli attività", details: err.message });
@@ -555,6 +584,7 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
