@@ -5,8 +5,6 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 
-app.use(express.static(path.join(__dirname, "app/src/main/resources/sito")));
-
 dotenv.config();
 
 const app = express();
@@ -15,6 +13,8 @@ const PORT = process.env.PORT || 5000;
 
 let accessToken = null;
 let tokenExpiresAt = 0;
+
+app.use(express.static(path.join(__dirname, "app/src/main/resources/sito")));
 
 // 🔄 Refresh automatico del token
 async function refreshAccessToken() {
@@ -537,6 +537,7 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server attivo su http://localhost:${PORT}`);
 });
+
 
 
 
